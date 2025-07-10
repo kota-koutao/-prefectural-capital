@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>県庁所在地クイズシューティング</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        #game-container {
+            width: 400px;
+            height: 600px;
+            border: 2px solid #333;
+            position: relative;
+            overflow: hidden;
+            background-color: #fff;
+        }
+        .enemy {
+            position: absolute;
+            top: -40px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 10px 20px;
+            background-color: #4a90e2;
+            color: white;
+            border-radius: 8px;
+            font-size: 18px;
+            white-space: nowrap;
+        }
+        #choices {
+            position: absolute;
+            bottom: 10px;
+            width: 100%;
+            display: flex;
+            justify-content: space-around;
+        }
+        .choice-btn {
+            padding: 15px 10px;
+            width: 120px;
+            font-size: 16px;
+            cursor: pointer;
+            border: 2px solid #333;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .choice-btn:hover {
+            background-color: #e0e0e0;
+        }
+        #hud {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 20px;
+            color: #333;
+        }
+        #game-over, #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+        #game-over h2, #start-screen h1 {
+            margin-bottom: 20px;
+        }
+        #game-over button, #start-screen button {
+            padding: 10px 20px;
+            font-size: 18px;
+            cursor: pointer;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="hud">
+        <span>スコア: <span id="score">0</span></span> |
+        <span>ライフ: <span id="lives">3</span></span>
+    </div>
+    <div id="enemy-container"></div>
+    <div id="choices">
+        <button class="choice-btn" id="choice1"></button>
+        <button class="choice-btn" id="choice2"></button>
+        <button class="choice-btn" id="choice3"></button>
+    </div>
+
+    <div id="start-screen">
+        <h1>県庁所在地クイズ<br>シューティング</h1>
+        <p>上から落ちてくる都道府県の<br>県庁所在地を当てよう！</p>
+        <button id="start-button">ゲーム開始</button>
+    </div>
+
+    <div id="game-over" class="hidden">
+        <h2>ゲームオーバー</h2>
+        <p>最終スコア: <span id="final-score">0</span></p>
+        <button id="retry-button">もう一度プレイ</button>
+    </div>
+</div>
+
+<script>
+    const prefecturesData = [
+        { prefecture: "北海道", capital: "札幌市" }, { prefecture: "青森県", capital: "青森市" },
+        { prefecture: "岩手県", capital: "盛岡市" }, { prefecture: "宮城県", capital: "仙台市" },
+        { prefecture: "秋田県", capital: "秋田市" }, { prefecture: "山形県", capital: "山形市" },
+        { prefecture: "福島県", capital: "福島市" }, { prefecture: "茨城県", capital: "水戸市" },
+        { prefecture: "栃木県", capital: "宇都宮市" }, { prefecture: "群馬県", capital: "前橋市" },
+        { prefecture: "埼玉県", capital: "さいたま市" }, { prefecture: "千葉県", capital: "千葉市" },
+        { prefecture: "東京都", capital: "新宿区" }, { prefecture: "神奈川県", capital: "横浜市" },
+        { prefecture: "新潟県", capital: "新潟市" }, { prefecture: "富山県", capital: "富山市" },
+        { prefecture: "石川県", capital: "金沢市" }, { prefecture: "福井県", capital: "福井市" },
+        { prefecture: "山梨県", capital: "甲府市" }, { prefecture: "長野県", capital: "長野市" },
+        { prefecture: "岐阜県", capital: "岐阜市" }, { prefecture: "静岡県", capital: "静岡市" },
+        { prefecture: "愛知県", capital: "名古屋市" }, { prefecture: "三重県", capital: "津市" },
+        { prefecture: "滋賀県", capital: "大津市" }, { prefecture: "京都府", capital: "京都市" },
+        { prefecture: "大阪府", capital: "大阪市" }, { prefecture: "兵庫県", capital: "神戸市" },
+        { prefecture: "奈良県", capital: "奈良市" }, { prefecture: "和歌山県", capital: "和歌山市" },
+        { prefecture: "鳥取県", capital: "鳥取市" }, { prefecture: "島根県", capital: "松江市" },
+        { prefecture: "岡山県", capital: "岡山市" }, { prefecture: "広島県", capital: "広島市" },
+        { prefecture: "山口県", capital: "山口市" }, { prefecture: "徳島県", capital: "徳島市" },
+        { prefecture: "香川県", capital: "高松市" }, { prefecture: "愛媛県", capital: "松山市" },
+        { prefecture: "高知県", capital: "高知市" }, { prefecture: "福岡県", capital: "福岡市" },
+        { prefecture: "佐賀県", capital: "佐賀市" }, { prefecture: "長崎県", capital: "長崎市" },
+        { prefecture: "熊本県", capital: "熊本市" }, { prefecture: "大分県", capital: "大分市" },
+        { prefecture: "宮崎県", capital: "宮崎市" }, { prefecture: "鹿児島県", capital: "鹿児島市" },
+        { prefecture: "沖縄県", capital: "那覇市" }
+    ];
+
+    const gameContainer = document.getElementById('game-container');
+    const enemyContainer = document.getElementById('enemy-container');
+    const scoreEl = document.getElementById('score');
+    const livesEl = document.getElementById('lives');
+    const choiceButtons = document.querySelectorAll('.choice-btn');
+    const startScreen = document.getElementById('start-screen');
+    const gameOverScreen = document.getElementById('game-over');
+    const startButton = document.getElementById('start-button');
+    const retryButton = document.getElementById('retry-button');
+    const finalScoreEl = document.getElementById('final-score');
+
+    let score = 0;
+    let lives = 3;
+    let currentQuestion = null;
+    let enemyInterval;
+    let gameActive = false;
+
+    function startGame() {
+        score = 0;
+        lives = 3;
+        scoreEl.textContent = score;
+        livesEl.textContent = lives;
+        gameActive = true;
+        
+        startScreen.classList.add('hidden');
+        gameOverScreen.classList.add('hidden');
+        
+        spawnEnemy();
+    }
+
+    function spawnEnemy() {
+        if (!gameActive) return;
+
+        // Clear previous enemy if any
+        if (enemyContainer.firstChild) {
+            enemyContainer.removeChild(enemyContainer.firstChild);
+        }
+        clearInterval(enemyInterval);
+
+        // Get a random question
+        const questionIndex = Math.floor(Math.random() * prefecturesData.length);
+        currentQuestion = prefecturesData[questionIndex];
+
+        // Create enemy element
+        const enemy = document.createElement('div');
+        enemy.className = 'enemy';
+        enemy.textContent = currentQuestion.prefecture;
+        enemyContainer.appendChild(enemy);
+
+        // Set up choices
+        setupChoices();
+
+        // Move enemy
+        let enemyPosition = -40;
+        enemy.style.top = enemyPosition + 'px';
+        
+        enemyInterval = setInterval(() => {
+            if (!gameActive) {
+                clearInterval(enemyInterval);
+                return;
+            }
+            enemyPosition += 2; // Speed of falling
+            enemy.style.top = enemyPosition + 'px';
+
+            if (enemyPosition > gameContainer.offsetHeight) {
+                loseLife();
+            }
+        }, 20); // Update interval
+    }
+
+    function setupChoices() {
+        const correctAnswer = currentQuestion.capital;
+        let wrongAnswers = [];
+        
+        // Get two unique wrong answers
+        while (wrongAnswers.length < 2) {
+            const randomIndex = Math.floor(Math.random() * prefecturesData.length);
+            const randomCapital = prefecturesData[randomIndex].capital;
+            if (randomCapital !== correctAnswer && !wrongAnswers.includes(randomCapital)) {
+                wrongAnswers.push(randomCapital);
+            }
+        }
+
+        const choices = [correctAnswer, ...wrongAnswers];
+        // Shuffle choices
+        choices.sort(() => Math.random() - 0.5);
+
+        choiceButtons.forEach((button, index) => {
+            button.textContent = choices[index];
+            button.dataset.correct = (choices[index] === correctAnswer);
+        });
+    }
+
+    function handleChoice(e) {
+        if (!gameActive || !currentQuestion) return;
+
+        const isCorrect = e.target.dataset.correct === 'true';
+
+        if (isCorrect) {
+            score++;
+            scoreEl.textContent = score;
+            spawnEnemy();
+        } else {
+            loseLife();
+        }
+    }
+    
+    function loseLife() {
+        if (!gameActive) return;
+        lives--;
+        livesEl.textContent = lives;
+        if (lives <= 0) {
+            endGame();
+        } else {
+            spawnEnemy();
+        }
+    }
+
+    function endGame() {
+        gameActive = false;
+        clearInterval(enemyInterval);
+        if (enemyContainer.firstChild) {
+            enemyContainer.removeChild(enemyContainer.firstChild);
+        }
+        finalScoreEl.textContent = score;
+        gameOverScreen.classList.remove('hidden');
+    }
+
+    choiceButtons.forEach(button => button.addEventListener('click', handleChoice));
+    startButton.addEventListener('click', startGame);
+    retryButton.addEventListener('click', startGame);
+
+</script>
+</body>
+</html>
